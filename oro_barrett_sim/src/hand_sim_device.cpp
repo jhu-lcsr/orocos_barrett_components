@@ -179,7 +179,7 @@ namespace oro_barrett_sim {
         // Fingers: handle TorqueSwitch semi-underactuated behavior
 
         // Define the gain used to couple the two finger joints
-        const double KNUCKLE_GAIN = 10.0;
+        const double KNUCKLE_GAIN = 50.0;
 
         // Get link and fingertip torque
         link_torque[i] = gazebo_joints[mid]->GetForceTorque(0).body2Torque.z;
