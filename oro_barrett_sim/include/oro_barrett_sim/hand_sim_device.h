@@ -52,13 +52,15 @@ namespace oro_barrett_sim {
     bool doneMoving(const unsigned pair_index);
     bool withinTorqueLimits(const unsigned joint_index);
 
+    const double outerCouplingForce(
+      const double inner_pos,
+      const double inner_vel,
+      const double outer_pos,
+      const double outer_vel) const;
+
     std::vector<gazebo::physics::JointPtr> gazebo_joints;
 
     bool compliance_enabled;
-
-    double
-      breakaway_torque,
-      stop_torque;
 
     Eigen::VectorXd
       link_torque,
@@ -77,9 +79,17 @@ namespace oro_barrett_sim {
     std::vector<bool> torque_switches;
 
     double
+      inner_breakaway_torque,
+      stop_torque,
+      max_torque,
+      finger_acceleration,
       p_gain,
       d_gain,
-      velocity_gain;
+      velocity_gain,
+      inner_breakaway_gain,
+      outer_recouple_velocity,
+      outer_coupling_p_gain,
+      outer_coupling_d_gain;
   };
 }
 
