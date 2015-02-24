@@ -113,9 +113,10 @@ namespace oro_barrett_sim {
     virtual void readDevice(ros::Time time, RTT::Seconds period)
     {
       // Exponentially smooth velocity 
-      this->joint_velocity = 
-        this->velocity_smoothing_factor*this->joint_velocity 
-        + (1.0 - this->velocity_smoothing_factor)*raw_joint_velocity;
+      {
+        const double a = exp(-1.0 * period / this->velocity_smoothing_factor);
+        this->joint_velocity = a*this->joint_velocity + (1.0 - a)*raw_joint_velocity;
+      }
 
       // Store position
       this->joint_position = raw_joint_position;

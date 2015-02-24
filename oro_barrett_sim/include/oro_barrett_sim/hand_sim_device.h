@@ -85,6 +85,8 @@ namespace oro_barrett_sim {
       finger_acceleration,
       p_gain,
       d_gain,
+      trap_vel,
+      trap_accel,
       velocity_gain,
       inner_breakaway_gain,
       outer_recouple_velocity,

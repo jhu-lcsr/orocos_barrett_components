@@ -58,13 +58,15 @@ namespace oro_barrett_sim {
     stop_torque(2.0),
     p_gain(25.0),
     d_gain(1.0),
+    trap_vel(1.0),
+    trap_accel(10.0),
     velocity_gain(0.1),
     inner_breakaway_gain(10),
     outer_recouple_velocity(1.0)
   {
     // Initialize velocity profiles
     for(unsigned i=0; i<N_PUCKS; i++) {
-      trap_generators.push_back(KDL::VelocityProfile_Trap(1.0,0.1));
+      trap_generators.push_back(KDL::VelocityProfile_Trap(trap_vel,trap_accel));
     }
 
     //using namespace gazebo::physics;
@@ -73,6 +75,9 @@ namespace oro_barrett_sim {
     //ODELink *prox_link_2 = joints[3]->GetParent();
 
     RTT::Service::shared_ptr hand_service = parent_service->provides("hand");
+
+    hand_service->addProperty("trap_vel",trap_vel);
+    hand_service->addProperty("trap_accel",trap_accel);
 
     hand_service->addProperty("max_torque",max_torque);
     hand_service->addProperty("stop_torque",stop_torque);
@@ -96,6 +101,10 @@ namespace oro_barrett_sim {
 
     link_torque.setZero();
     fingertip_torque.setZero();
+
+    for(unsigned i=0; i<N_PUCKS; i++) {
+      trap_generators[i].SetMax(trap_vel, trap_accel);
+    }
   }
 
   void HandSimDevice::idle()
