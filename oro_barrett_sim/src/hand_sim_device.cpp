@@ -31,6 +31,11 @@ static const int sgn(T val)
   return (T(0) < val) - (val < T(0));
 }
 
+static const double clamp(const double lower, const double value, const double upper)
+{
+  return std::max(lower,std::min(value,upper));
+}
+
 namespace oro_barrett_sim {
 
   HandSimDevice::HandSimDevice(
@@ -47,6 +52,7 @@ namespace oro_barrett_sim {
     link_torque(4),
     fingertip_torque(4),
     breakaway_angle(4),
+    joint_i_err(8),
     joint_torque(8),
     joint_torque_max(Eigen::VectorXd::Constant(8, 1.5)),
     joint_torque_breakaway(4),
@@ -56,11 +62,15 @@ namespace oro_barrett_sim {
     torque_switches(4,false),
     inner_breakaway_torque(1.5),
     stop_torque(2.0),
-    p_gain(25.0),
-    d_gain(1.0),
+    p_gain(1.0),
+    i_gain(0.1),
+    i_clamp(0.5),
+    d_gain(0.01),
     trap_vel(1.0),
     trap_accel(10.0),
     velocity_gain(0.1),
+    spread_p_gain(10.0),
+    spread_d_gain(0.01),
     inner_breakaway_gain(10),
     outer_recouple_velocity(1.0)
   {
@@ -88,7 +98,12 @@ namespace oro_barrett_sim {
     hand_service->addProperty("outer_recouple_velocity",outer_recouple_velocity);
 
     hand_service->addProperty("p_gain",p_gain);
+    hand_service->addProperty("i_gain",i_gain);
+    hand_service->addProperty("i_clamp",i_clamp);
     hand_service->addProperty("d_gain",d_gain);
+    
+    hand_service->addProperty("sprad_d_gain",spread_d_gain);
+    hand_service->addProperty("sprad_p_gain",spread_p_gain);
 
     hand_service->addProperty("outer_coupling_p_gain",outer_coupling_p_gain);
     hand_service->addProperty("outer_coupling_d_gain",outer_coupling_d_gain);
@@ -101,6 +116,7 @@ namespace oro_barrett_sim {
 
     link_torque.setZero();
     fingertip_torque.setZero();
+    joint_i_err.setZero();
 
     for(unsigned i=0; i<N_PUCKS; i++) {
       trap_generators[i].SetMax(trap_vel, trap_accel);
@@ -175,24 +191,33 @@ namespace oro_barrett_sim {
 
       const double &cmd = joint_cmd.cmd[i];
 
-      // Get the finger indices
-      unsigned inner, outer;
-      fingerToJointIDs(i, inner, outer);
 
       if(i == 3)
       {
-        const double &pos = joint_position[inner];
-        const double &vel = joint_velocity[inner];
+        // Get the finger indices
+        unsigned f1, f2;
+        fingerToJointIDs(i, f1, f2);
 
-        double torque_cmd = 0.0;
+        const double &pos_f1 = joint_position[f1];
+        const double &pos_f2 = joint_position[f2];
+        const double &vel_f1 = joint_velocity[f1];
+        const double &vel_f2 = joint_velocity[f2];
+
+        double eff_cmd = cmd;
         double pos_cmd = cmd;
         double vel_cmd = cmd;
+
+        // Spread: both proximal joints should be kept at the same position
+        const double spread_err = pos_f1 - pos_f2;
+        const double spread_derr = vel_f1 - vel_f2;
+        const double spread_constraint_force = spread_p_gain*spread_err + spread_d_gain*spread_derr;
 
         switch(joint_cmd.mode[i])
         {
           case oro_barrett_msgs::BHandCmd::MODE_IDLE:
             {
-              torque_cmd = 0.0;
+              gazebo_joints[f1]->SetForce(0, -spread_constraint_force);
+              gazebo_joints[f2]->SetForce(0, spread_constraint_force);
               break;
             }
           case oro_barrett_msgs::BHandCmd::MODE_TRAPEZOIDAL:
@@ -208,16 +233,35 @@ namespace oro_barrett_sim {
               else if(joint_cmd.mode[i] == oro_barrett_msgs::BHandCmd::MODE_VELOCITY)
               {
                 vel_cmd = cmd;
-                pos_cmd = joint_velocity_cmd_start_positions[i] + vel_cmd * (time - joint_velocity_cmd_start_times[i]).toSec();
+                pos_cmd =
+                  joint_velocity_cmd_start_positions[i] +
+                  vel_cmd * (time - joint_velocity_cmd_start_times[i]).toSec();
               }
 
-              pos_cmd = std::max(0.0,std::min(2.7,pos_cmd));
-              torque_cmd = p_gain * (pos_cmd - pos) + d_gain * (vel_cmd - vel);
+              pos_cmd = clamp(-0.1, pos_cmd, M_PI+0.1);
+
+              const double p_err_f1 = pos_cmd - pos_f1;
+              const double p_err_f2 = pos_cmd - pos_f2;
+
+              const double d_err_f1 = vel_cmd - vel_f1;
+              const double d_err_f2 = vel_cmd - vel_f2;
+
+              joint_i_err[f1] = clamp(-i_clamp, joint_i_err[f1] + p_err_f1*period, i_clamp);
+              joint_i_err[f2] = clamp(-i_clamp, joint_i_err[f2] + p_err_f1*period, i_clamp);
+
+              const double eff_cmd_f1 = p_gain*p_err_f1 + i_gain*joint_i_err[f1] + d_gain*d_err_f1;
+              const double eff_cmd_f2 = p_gain*p_err_f2 + i_gain*joint_i_err[f2] + d_gain*d_err_f2;
+
+              gazebo_joints[f1]->SetForce(0, eff_cmd_f1 - spread_constraint_force);
+              gazebo_joints[f2]->SetForce(0, eff_cmd_f2 + spread_constraint_force);
+
               break;
             }
           case oro_barrett_msgs::BHandCmd::MODE_TORQUE:
             {
-              torque_cmd = cmd;
+              gazebo_joints[f1]->SetForce(0, eff_cmd - spread_constraint_force);
+              gazebo_joints[f2]->SetForce(0, eff_cmd + spread_constraint_force);
+
               break;
             }
           default:
@@ -226,17 +270,13 @@ namespace oro_barrett_sim {
               return;
             }
         };
-
-        // Spread: both proximal joints should be kept at the same position
-        double spread_err = joint_position[0] - joint_position[1];
-        double spread_derr = joint_velocity[0] - joint_velocity[1];
-        double spread_constraint_force = 10.0*spread_err + 0.0*spread_derr;
-
-        gazebo_joints[0]->SetForce(0,-spread_constraint_force + torque_cmd);
-        gazebo_joints[1]->SetForce(0,spread_constraint_force + torque_cmd);
       }
       else
       {
+        // Get the finger indices
+        unsigned inner, outer;
+        fingerToJointIDs(i, inner, outer);
+
         const double &inner_pos = joint_position[inner];
         const double &outer_pos = joint_position[outer];
 
@@ -307,10 +347,14 @@ namespace oro_barrett_sim {
                 pos_cmd = joint_velocity_cmd_start_positions[i] + vel_cmd * (time - joint_velocity_cmd_start_times[i]).toSec();
               }
 
-              pos_cmd = std::max(0.0,std::min(2.7,pos_cmd));
+              pos_cmd = clamp(-0.1, pos_cmd, 2.7);
+
 
               if(coupled) {
-                gazebo_joints[inner]->SetForce(0, p_gain * (pos_cmd - inner_pos) + d_gain * (vel_cmd - inner_vel));
+                const double p_err = pos_cmd - inner_pos;
+                joint_i_err[inner] = clamp(-i_clamp, joint_i_err[inner] + p_err*period, i_clamp);
+
+                gazebo_joints[inner]->SetForce(0, p_gain * (p_err) + i_gain * joint_i_err[inner] + d_gain * (vel_cmd - inner_vel));
                 gazebo_joints[outer]->SetForce(0, outerCouplingForce(inner_pos, inner_vel, outer_pos, outer_vel));
               } else {
                 gazebo_joints[inner]->SetForce(0, inner_breakaway_torque);

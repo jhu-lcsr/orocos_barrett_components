@@ -41,7 +41,7 @@ class SpreadAction(object):
         self.done_moving = None
 
         # ROS parameters
-        self.goal_tolerance = rospy.get_param('~goal_tolerance', 0.005)
+        self.goal_tolerance = rospy.get_param('~goal_tolerance', 0.02)
 
         # ROS topics
         self.joint_states_sub = rospy.Subscriber(
