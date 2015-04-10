@@ -118,6 +118,8 @@ namespace oro_barrett_sim {
     fingertip_torque.setZero();
     joint_i_err.setZero();
 
+    joint_cmd.cmd.assign(0);
+
     for(unsigned i=0; i<N_PUCKS; i++) {
       trap_generators[i].SetMax(trap_vel, trap_accel);
     }
@@ -132,6 +134,7 @@ namespace oro_barrett_sim {
   void HandSimDevice::run()
   {
     run_mode = RUN;
+    joint_cmd.mode.assign(oro_barrett_msgs::BHandCmd::MODE_PID);
   }
 
   void HandSimDevice::setCompliance(bool enable)
@@ -190,7 +193,6 @@ namespace oro_barrett_sim {
     for(unsigned i=0; i<4; i++) {
 
       const double &cmd = joint_cmd.cmd[i];
-
 
       if(i == 3)
       {
