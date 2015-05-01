@@ -161,7 +161,7 @@ namespace oro_barrett_sim {
   void HandSimDevice::readSim(ros::Time time, RTT::Seconds period)
   {
     // torque filter constant
-    const double t = exp(-1.0 * period / 0.02);
+    const double t = exp(-2.0 * M_PI * period / 0.02);
 
     // Get state from ALL gazebo joints
     for(unsigned i=0; i < N_PUCKS; i++) {
@@ -351,7 +351,6 @@ namespace oro_barrett_sim {
 
               pos_cmd = clamp(-0.1, pos_cmd, 2.7);
 
-
               if(coupled) {
                 const double p_err = pos_cmd - inner_pos;
                 joint_i_err[inner] = clamp(-i_clamp, joint_i_err[inner] + p_err*period, i_clamp);
@@ -519,6 +518,9 @@ namespace oro_barrett_sim {
             } else if(new_position_cmd && joint_cmd.mode[i] == oro_barrett_msgs::BHandCmd::MODE_PID) {
               joint_cmd.cmd[i] = joint_position_cmd[i];
             } else if(new_velocity_cmd && joint_cmd.mode[i] == oro_barrett_msgs::BHandCmd::MODE_VELOCITY) {
+              if(i==3) {
+                std::cerr<<"new vel command"<<std::endl;
+              }
               joint_cmd.cmd[i] = joint_velocity_cmd[i];
               joint_velocity_cmd_start_times[i] = rtt_rosclock::rtt_now();
               joint_velocity_cmd_start_positions[i] = joint_position[medial_id];

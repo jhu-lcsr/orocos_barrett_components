@@ -114,8 +114,8 @@ namespace oro_barrett_sim {
     {
       // Exponentially smooth velocity 
       {
-        const double a = exp(-1.0 * period / this->velocity_smoothing_factor);
-        this->joint_velocity = a*this->joint_velocity + (1.0 - a)*raw_joint_velocity;
+        const double a = exp(-2.0 * M_PI * period * this->velocity_cutoff_frequency);
+        this->joint_velocity = (1.0-a)*this->joint_velocity + (a)*raw_joint_velocity;
       }
 
       // Store position

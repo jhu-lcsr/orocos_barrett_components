@@ -125,8 +125,8 @@ namespace oro_barrett_interface {
       wam_service->doc("Barrett WAM robot interface");
 
       // Properties
-      wam_service->addProperty("velocity_smoothing_factor",velocity_smoothing_factor)
-        .doc("The coefficient used for exponentially smoothing the velocity estimate.");
+      wam_service->addProperty("velocity_cutoff_frequency",velocity_cutoff_frequency)
+        .doc("The cutoff frequency used for exponentially smoothing the velocity estimate.");
       wam_service->addProperty("warning_fault_ratio",warning_fault_ratio)
         .doc("The ratio of any given safety limit which should precipitate a warning.");
       wam_service->addProperty("home_position",joint_home_position)
@@ -313,7 +313,7 @@ namespace oro_barrett_interface {
     RTT::Service::shared_ptr parent_service_;
 
     // Configuration
-    double velocity_smoothing_factor;
+    double velocity_cutoff_frequency;
     double warning_fault_ratio;
     bool read_resolver;
     std::vector<std::string>
