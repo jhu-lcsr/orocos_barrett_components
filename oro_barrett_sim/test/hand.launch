@@ -12,15 +12,48 @@
     <arg name="world_name" value="$(find oro_barrett_sim)/test/hand.world"/>
   </include>
 
-  <param name="robot_description" 
-    command="$(find xacro)/xacro.py '$(find oro_barrett_sim)/test/hand.urdf.xacro' ops_script:=$(find oro_barrett_sim)/test/hand.ops" />
+  <group ns="gazebo/barrett_manager">
+    <param name="robot_description" 
+      command="$(find xacro)/xacro.py '$(find oro_barrett_sim)/test/hand.urdf.xacro' ops_script:=$(find oro_barrett_sim)/test/hand.ops" />
 
-  <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
-    args="-urdf -model hand -param robot_description"/>
+    <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
+      args="-urdf -model hand -param robot_description"/>
 
-  <group ns="gazebo/barrett_manager/hand">
-    <node pkg="robot_state_publisher" type="robot_state_publisher" name="hand_state_publisher">
+    <node ns="hand" pkg="robot_state_publisher" type="robot_state_publisher" name="hand_state_publisher">
       <param name="publish_frequency" value="50"/>
+    </node>
+    <rosparam subst_value="true">
+      # Auto-configuration
+      auto_configure_wam: false
+      auto_configure_hand: false 
+
+      # Hand Parameters
+      hand:
+        trap_vel: 2.0
+        trap_accel: 10.0
+        p_gain: 10.0
+        i_gain: 0.0
+        i_clamp: 0.0
+        d_gain: 0.02
+        max_torque: 3.0
+        stop_torque: 3.0
+        spread_p_gain: 10.0
+        spread_d_gain: 0.01
+        finger_acceleration: 1.0
+        inner_breakaway_gain: 0.001
+        inner_breakaway_torque: 0.5
+        outer_recouple_velocity: 1.0
+        outer_coupling_p_gain: 1.0
+        outer_coupling_d_gain: 0.001
+    </rosparam>
+    <param name="hand_urdf_prefix" value="hand"/>
+
+    <!-- Mid-Level hand interface -->
+    <node name="bhand_action_server"
+      pkg="oro_barrett_interface"
+      type="bhand_action_server.py"
+      output="screen">
+      <param name="tf_prefix" value="hand"/>
     </node>
   </group>
 </launch>
