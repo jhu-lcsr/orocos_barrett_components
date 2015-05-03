@@ -165,10 +165,13 @@ namespace oro_barrett_interface {
     joint_idle_cmd.setZero();
 
     // Set up action servers
-    set_mode_action_server_.addPorts(parent_service->provides("bhand_set_mode_action"), true, "~"+owner_name+"/hand/set_mode_action/");
+    std::string set_mode_action_name = "set_mode_action"; // NOTE: this segfaults without this here
+    set_mode_action_server_.addPorts(hand_service->provides(set_mode_action_name), true, "~"+owner_name+"/hand/"+set_mode_action_name+"/");
     set_mode_action_server_.registerGoalCallback(boost::bind(&HandDevice::set_mode_goal_cb, this, _1));
     set_mode_action_server_.start();
-    initialize_action_server_.addPorts(parent_service->provides("initialize_action"), true, "~"+owner_name+"/hand/initialize_action/");
+
+    std::string initialize_action_name = "initialize_action"; // NOTE: this segfaults without this here
+    initialize_action_server_.addPorts(hand_service->provides(initialize_action_name), true, "~"+owner_name+"/hand/"+initialize_action_name+"/");
     initialize_action_server_.registerGoalCallback(boost::bind(&HandDevice::initialize_goal_cb, this, _1));
     initialize_action_server_.start();
   }

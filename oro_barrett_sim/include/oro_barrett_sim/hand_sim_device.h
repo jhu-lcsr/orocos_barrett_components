@@ -52,6 +52,12 @@ namespace oro_barrett_sim {
     bool doneMoving(const unsigned pair_index);
     bool withinTorqueLimits(const unsigned joint_index);
 
+    void sampleTrapPosVel(const int &finger, const ros::Time &time, double &pos_sample, double &vel_sample) const;
+    void sampleRampPosVel(const int &finger, const ros::Time &time, double &pos_sample, double &vel_sample) const;
+
+    void setVelocity(const unsigned dof, const double initial_pos, const double vel);
+    void setTrap(const unsigned dof, const double initial_pos, const double pos);
+
     const double outerCouplingForce(
       const double inner_pos,
       const double inner_vel,

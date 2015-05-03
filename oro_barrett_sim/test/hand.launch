@@ -3,7 +3,7 @@
   <arg name="debug" default="false"/>
 
   <include file="$(find rtt_gazebo_examples)/test/empty_world.launch">
-    <env name="ORO_LOGLEVEL" value="debug"/>
+    <env name="ORO_LOGLEVEL" value="6"/>
     <arg name="gui" value="$(arg gui)" />
     <arg name="debug" value="$(arg debug)" />
     <arg name="paused" value="false"/>
@@ -25,7 +25,9 @@
     <rosparam subst_value="true">
       # Auto-configuration
       auto_configure_wam: false
-      auto_configure_hand: false 
+      auto_configure_hand: true
+
+      hand_urdf_prefix: 'hand'
 
       # Hand Parameters
       hand:

@@ -40,7 +40,7 @@ bool BarrettSimManager::gazeboConfigureHook(gazebo::physics::ModelPtr model)
   RTT::log(RTT::Info) << "Configuring Barrett manager from Gazebo Model..." << RTT::endlog();
 
   if(model.get() == NULL) {
-    RTT::log(RTT::Error) << "Barrett Gazebo Model was null." << RTT::endlog();  
+    RTT::log(RTT::Error) << "Barrett Gazebo Model was null." << RTT::endlog();
     return false;
   }
 
@@ -51,7 +51,7 @@ bool BarrettSimManager::gazeboConfigureHook(gazebo::physics::ModelPtr model)
 }
 
 //! Called from Gazebo
-void BarrettSimManager::gazeboUpdateHook(gazebo::physics::ModelPtr model) 
+void BarrettSimManager::gazeboUpdateHook(gazebo::physics::ModelPtr model)
 {
   ros::Time gz_time = rtt_rosclock::rtt_now();
   RTT::Seconds gz_period = (gz_time - last_gz_update_time_).toSec();
@@ -113,8 +113,9 @@ bool BarrettSimManager::configureHook()
 
   // Auto-configure optional WAM
   if(auto_configure_wam_) {
+    RTT::log(RTT::Info) << "Configuring WAM..." << RTT::endlog();
     switch(wam_dof_) {
-      case 4: 
+      case 4:
         if(!this->configureWam4(wam_urdf_prefix_)) {
           RTT::log(RTT::Error) << "Unable to auto-configure 4-DOF WAM with URDF prefix \""<<wam_urdf_prefix_<<"\"." <<RTT::endlog();
           return false;
@@ -122,7 +123,7 @@ bool BarrettSimManager::configureHook()
         break;
       case 7:
         if(!this->configureWam7(wam_urdf_prefix_)) {
-          RTT::log(RTT::Error) << "Unable to auto-configure 4-DOF WAM with URDF prefix \""<<wam_urdf_prefix_<<"\"." <<RTT::endlog();
+          RTT::log(RTT::Error) << "Unable to auto-configure 7-DOF WAM with URDF prefix \""<<wam_urdf_prefix_<<"\"." <<RTT::endlog();
           return false;
         }
         break;
@@ -139,11 +140,12 @@ bool BarrettSimManager::configureHook()
 
   // Auto-configure optional BHand
   if(auto_configure_hand_) {
+    RTT::log(RTT::Info) << "Configuring hand with URDF prefix \""<<hand_urdf_prefix_<<"\"..." << RTT::endlog();
     if(!this->configureHand(hand_urdf_prefix_)) {
       RTT::log(RTT::Error) << "Unable to auto-configure BHand with URDF prefix \""<<hand_urdf_prefix_<<"\"." <<RTT::endlog();
       return false;
     }
-    
+
     // Get BHand ros parameters
     rosparam->getComponentPrivate("hand");
   }
@@ -151,8 +153,10 @@ bool BarrettSimManager::configureHook()
   return true;
 }
 
+
 bool BarrettSimManager::startHook()
 {
+
   // Initialize the last update time
   last_update_time_ = rtt_rosclock::rtt_now();
 
@@ -265,6 +269,7 @@ bool BarrettSimManager::configureWam7(const std::string &urdf_prefix)
   template<size_t DOF>
 bool BarrettSimManager::configureWam(const std::string &urdf_prefix)
 {
+  RTT::Logger::Instance()->in("BarrettSimManager::configureWam");
   using namespace oro_barrett_interface;
 
   // Make sure we 're in the configured state, and not running
@@ -326,6 +331,7 @@ bool BarrettSimManager::configureWam(const std::string &urdf_prefix)
 
 bool BarrettSimManager::configureHand(const std::string &urdf_prefix)
 {
+  RTT::Logger::Instance()->in("BarrettSimManager::configureHand");
   using namespace oro_barrett_interface;
 
   std::vector<std::string> hand_joint_names = boost::assign::list_of

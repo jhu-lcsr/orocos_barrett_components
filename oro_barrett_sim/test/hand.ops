@@ -7,7 +7,6 @@ runScript(ros.find("oro_barrett_sim")+"/test/barrett_manager.ops");
 
 // Create a BHand
 barrett_manager.configure();
-barrett_manager.configureHand("hand");
 
 barrett_manager.start();
 barrett_manager.hand.initialize();

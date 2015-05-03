@@ -28,7 +28,6 @@ namespace oro_barrett_interface {
       RTT::log(RTT::Debug)
         << "Adding segment " <<child_name
         << " to parent "<< element_name
-        << " with transform: "
         << RTT::endlog();
 
       // Add this segment to the subtree
