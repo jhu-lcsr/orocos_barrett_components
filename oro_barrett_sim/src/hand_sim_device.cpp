@@ -258,7 +258,7 @@ namespace oro_barrett_sim {
               vel_cmd = 0.0;
               break;
             default:
-              RTT::log(RTT::Error) << "Bad high-level finger command mode: "<<joint_cmd.mode[SPREAD_ID]<<RTT::endlog();
+              RTT::log(RTT::Error) << "Bad high-level finger command mode: "<<int(joint_cmd.mode[SPREAD_ID])<<RTT::endlog();
               return;
           };
 
@@ -314,7 +314,7 @@ namespace oro_barrett_sim {
         double eff_cmd = 0.0;
 
         // Switch the control law based on the command mode
-        if(joint_cmd.mode[SPREAD_ID] == oro_barrett_msgs::BHandCmd::MODE_TORQUE)
+        if(joint_cmd.mode[i] == oro_barrett_msgs::BHandCmd::MODE_TORQUE)
         {
           eff_cmd = cmd;
         }
@@ -337,7 +337,7 @@ namespace oro_barrett_sim {
               vel_cmd = 0.0;
               break;
             default:
-              RTT::log(RTT::Error) << "Bad high-level command mode: "<<joint_cmd.mode[i]<<RTT::endlog();
+              RTT::log(RTT::Error) << "Bad high-level command mode: "<<int(joint_cmd.mode[i])<<RTT::endlog();
               return;
           };
 
@@ -489,6 +489,7 @@ namespace oro_barrett_sim {
               {
                 case oro_barrett_msgs::BHandCmd::MODE_SAME:
                   // Ignore this puck, don't update command or command mode
+                  joint_cmd_tmp.mode[i] = joint_cmd.mode[i];
                   continue;
                 case oro_barrett_msgs::BHandCmd::MODE_IDLE:
                   joint_velocity_cmd[i] = 0;
@@ -516,7 +517,7 @@ namespace oro_barrett_sim {
               };
 
               // Get the new command mode
-              new_cmd_mode = joint_cmd_tmp.mode[i];
+              new_cmd_mode = int(joint_cmd_tmp.mode[i]);
             }
 
             // Update the command
