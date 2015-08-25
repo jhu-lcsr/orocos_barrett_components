@@ -163,6 +163,8 @@ namespace oro_barrett_interface {
     joint_state.effort.resize(8);
 
     joint_idle_cmd.setZero();
+    joint_position.setZero();
+    joint_velocity.setZero();
 
     // Set up action servers
     std::string set_mode_action_name = "set_mode_action"; // NOTE: this segfaults without this here

@@ -64,8 +64,11 @@ namespace oro_barrett_sim {
     joint_velocity_cmd_start_times(4),
     trap_start_times(4),
     torque_switches(4,false),
+    torque_switch_positions(4,0.0),
     inner_breakaway_torque(1.5),
     stop_torque(2.0),
+    admittance_control(false),
+    admittance_gain(0.1),
     p_gain(1.0),
     i_gain(0.1),
     i_clamp(0.5),
@@ -101,6 +104,9 @@ namespace oro_barrett_sim {
     hand_service->addProperty("velocity_gain",velocity_gain);
     hand_service->addProperty("outer_recouple_velocity",outer_recouple_velocity);
 
+    hand_service->addProperty("admittance_control",admittance_control);
+    hand_service->addProperty("admittance_gain",admittance_gain);
+
     hand_service->addProperty("p_gain",p_gain);
     hand_service->addProperty("i_gain",i_gain);
     hand_service->addProperty("i_clamp",i_clamp);
@@ -121,6 +127,9 @@ namespace oro_barrett_sim {
   {
     init_state = INIT_FINGERS;
     run_mode = INITIALIZE;
+
+    joint_position.setZero();
+    joint_velocity.setZero();
 
     link_torque.setZero();
     fingertip_torque.setZero();
@@ -144,6 +153,16 @@ namespace oro_barrett_sim {
   {
     run_mode = RUN;
     joint_cmd.mode.assign(oro_barrett_msgs::BHandCmd::MODE_PID);
+    if(admittance_control) {
+      for(int i=0; i<N_PUCKS; i++) {
+        if(i!=SPREAD_ID) {
+          unsigned inner, outer;
+          fingerToJointIDs(i, inner, outer);
+          gazebo_joints[inner]->SetMaxForce(0, 100);
+          gazebo_joints[outer]->SetMaxForce(0, 100);
+        }
+      }
+    }
   }
 
   void HandSimDevice::setCompliance(bool enable)
@@ -182,6 +201,16 @@ namespace oro_barrett_sim {
       + outer_coupling_d_gain * (FINGER_JOINT_RATIO*inner_vel - outer_vel);
   }
 
+  const double HandSimDevice::innerBreakawayForce(
+      const double inner_pos,
+      const double inner_vel,
+      const double torque_switch_position) const
+  {
+    return
+      outer_coupling_p_gain * (torque_switch_position - inner_pos)
+      + outer_coupling_d_gain * (0.0 - inner_vel);
+  }
+
 
   void HandSimDevice::readSim(ros::Time time, RTT::Seconds period)
   {
@@ -194,8 +223,8 @@ namespace oro_barrett_sim {
       unsigned inner, outer;
       fingerToJointIDs(i, inner, outer);
 
-      joint_position[inner] = gazebo_joints[inner]->GetAngle(0).Radian();
-      joint_position[outer] = gazebo_joints[outer]->GetAngle(0).Radian();
+      joint_position[inner] = (1.0-t)*joint_position[inner] + t*gazebo_joints[inner]->GetAngle(0).Radian();
+      joint_position[outer] = (1.0-t)*joint_position[outer] + t*gazebo_joints[outer]->GetAngle(0).Radian();
 
       joint_velocity[inner] = (1.0-t)*joint_velocity[inner] + t*gazebo_joints[inner]->GetVelocity(0);
       joint_velocity[outer] = (1.0-t)*joint_velocity[outer] + t*gazebo_joints[outer]->GetVelocity(0);
@@ -359,12 +388,24 @@ namespace oro_barrett_sim {
         }
 
         // Apply inner and outer effort
+        double inner_torque = 0.0;
+        double outer_torque = 0.0;
         if(coupled) {
-          gazebo_joints[inner]->SetForce(0, eff_cmd);
-          gazebo_joints[outer]->SetForce(0, outerCouplingForce(inner_pos, inner_vel, outer_pos, outer_vel));
+          inner_torque = eff_cmd;
+          outer_torque = outerCouplingForce(inner_pos, inner_vel, outer_pos, outer_vel);
         } else {
-          gazebo_joints[inner]->SetForce(0, inner_breakaway_torque);
-          gazebo_joints[outer]->SetForce(0, eff_cmd);
+          inner_torque = innerBreakawayForce(inner_pos, inner_vel, torque_switch_positions[i]);
+          outer_torque = eff_cmd;
+        }
+
+        if(not admittance_control) {
+          // Impedance-based
+          gazebo_joints[inner]->SetForce(0, inner_torque);
+          gazebo_joints[outer]->SetForce(0, outer_torque);
+        } else {
+          // Admittance-based
+          gazebo_joints[inner]->SetVelocity(0, admittance_gain*(inner_torque - link_torque[i]));
+          gazebo_joints[outer]->SetVelocity(0, admittance_gain*(outer_torque - fingertip_torque[i]));
         }
 
         // Update the torque switch state
@@ -373,6 +414,7 @@ namespace oro_barrett_sim {
           if(link_torque[i] > inner_breakaway_torque and inner_vel < 0.01) {
             RTT::log(RTT::Warning) << "Enabling torque switch for F" << i+1 << RTT::endlog();
             torque_switches[i] = true;
+            torque_switch_positions[i] = inner_pos;
           }
         } else {
           // Check for torque switch disengage condition
@@ -630,6 +672,23 @@ namespace oro_barrett_sim {
   void HandSimDevice::setTrap(const unsigned dof, const double pos)
   {
     ros::Time time = rtt_rosclock::rtt_now();
+
+#if 0 // this isn't how the real hand works
+    // Check if the current trap is suitable with a new second position
+    bool pursuing_trap = joint_cmd.mode[dof] == oro_barrett_msgs::BHandCmd::MODE_TRAPEZOIDAL;
+
+    if(pursuing_trap) {
+      KDL::VelocityProfile_Trap &current_trap = trap_generators[i];
+
+      double current_target = joint_cmd.cmd[dof];
+      double target_diff = pos - current_target;
+
+      if(sgn(target_diff) == sgn(current_trap.Vel((time-trap_start_times[i])))) {
+        // Extend the target position of the current trap
+        trap_generators[dof].SetProfile(current_trap.Pos(0.0), pos);
+      }
+    }
+#endif
 
     const double start_pos = getTargetPos(dof, time);
 

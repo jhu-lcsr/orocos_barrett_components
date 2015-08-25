@@ -65,6 +65,11 @@ namespace oro_barrett_sim {
       const double outer_pos,
       const double outer_vel) const;
 
+    const double innerBreakawayForce(
+        const double inner_pos,
+        const double inner_vel,
+        const double torque_switch_position) const;
+
     std::vector<gazebo::physics::JointPtr> gazebo_joints;
 
     bool compliance_enabled;
@@ -85,12 +90,15 @@ namespace oro_barrett_sim {
     std::vector<KDL::VelocityProfile_Trap> trap_generators;
     std::vector<ros::Time> trap_start_times;
     std::vector<bool> torque_switches;
+    std::vector<double> torque_switch_positions;
 
+    bool admittance_control;
     double
       inner_breakaway_torque,
       stop_torque,
       max_torque,
       finger_acceleration,
+      admittance_gain,
       p_gain,
       d_gain,
       i_gain,
