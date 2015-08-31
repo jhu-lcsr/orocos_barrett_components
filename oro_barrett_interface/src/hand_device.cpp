@@ -145,10 +145,12 @@ namespace oro_barrett_interface {
       throw std::runtime_error(oss.str());
     }
 
+    RTT::log(RTT::Info) << "Gathering bhand links..." << RTT::endlog();
     // Get the root link of the bhand
     KDL::SegmentMap::const_iterator bhand_parent_link = full_tree.getSegment(urdf_prefix+"/bhand_palm_link")->second.parent;
     // Get the transform from the parent of the root link to the root link
-    base_to_parent_transform = full_tree.getSegment(urdf_prefix+"/bhand_palm_link")->second.segment.pose(0);
+    // This is not needed
+    //base_to_parent_transform = full_tree.getSegment(urdf_prefix+"/bhand_palm_link")->second.segment.pose(0);
     // Create a KDL tree with the same root name as the actual hand
     kdl_tree = KDL::Tree(bhand_parent_link->first);
     // Get the bhand subtree

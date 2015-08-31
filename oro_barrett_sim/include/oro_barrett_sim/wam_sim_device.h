@@ -86,8 +86,15 @@ namespace oro_barrett_sim {
     {
       // Get state from gazebo joints
       for(unsigned j=0; j < DOF; j++) {
-        raw_joint_velocity[j] = gazebo_joints_[j]->GetVelocity(0);
-        raw_joint_position[j] = gazebo_joints_[j]->GetAngle(0).Radian();
+        double pos = gazebo_joints_[j]->GetAngle(0).Radian();
+        double vel = (pos - raw_joint_position[j]) / period;
+        if(vel > 10 || period < 1E-6) {
+          vel = 0;
+        }
+        raw_joint_position[j] = pos;
+        raw_joint_velocity[j] = vel;
+        // DO NOT DO THIS: raw_joint_velocity[j] = gazebo_joints_[j]->GetVelocity(0);
+        // Known error that OSRF doesn't care about: https://bitbucket.org/osrf/gazebo/issues/622/joint-velocities-are-high-when-the-joint#
       }
     }
 
