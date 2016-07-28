@@ -40,13 +40,13 @@ namespace oro_barrett_sim {
      * the URDF.
      */
     WamSimDevice(
-        RTT::Service::shared_ptr parent_service, 
+        RTT::Service::shared_ptr parent_service,
         const urdf::Model &urdf_model,
         const std::string &urdf_prefix,
         std::vector<gazebo::physics::JointPtr> gazebo_joints) :
       oro_barrett_interface::WamDevice<DOF>(
-          parent_service, 
-          urdf_model, 
+          parent_service,
+          urdf_model,
           urdf_prefix),
       run_mode(IDLE),
       gazebo_joints_(gazebo_joints),
@@ -85,8 +85,10 @@ namespace oro_barrett_sim {
     void readSim(ros::Time time, RTT::Seconds period)
     {
       // Get state from gazebo joints
+      const double a = exp(-2.0 * M_PI * period * this->velocity_cutoff_frequency);
+
       for(unsigned j=0; j < DOF; j++) {
-        double pos = gazebo_joints_[j]->GetAngle(0).Radian();
+        double pos = (1.0-a)*raw_joint_position[j] + (a)*gazebo_joints_[j]->GetAngle(0).Radian();
         double vel = (pos - raw_joint_position[j]) / period;
         if(vel > 10 || period < 1E-6) {
           vel = 0;
@@ -119,11 +121,8 @@ namespace oro_barrett_sim {
 
     virtual void readDevice(ros::Time time, RTT::Seconds period)
     {
-      // Exponentially smooth velocity 
-      {
-        const double a = exp(-2.0 * M_PI * period * this->velocity_cutoff_frequency);
-        this->joint_velocity = (1.0-a)*this->joint_velocity + (a)*raw_joint_velocity;
-      }
+      // Exponentially smooth velocity
+      this->joint_velocity = raw_joint_velocity;
 
       // Store position
       this->joint_position = raw_joint_position;
@@ -132,8 +131,8 @@ namespace oro_barrett_sim {
       this->joint_position_out.write(this->joint_position);
       this->joint_velocity_out.write(this->joint_velocity);
 
-      // Publish state to ROS 
-      if(this->joint_state_throttle.ready(0.02)) 
+      // Publish state to ROS
+      if(this->joint_state_throttle.ready(0.02))
       {
         // Update the joint state message
         this->joint_state.header.stamp = rtt_rosclock::host_now();
@@ -141,7 +140,7 @@ namespace oro_barrett_sim {
         Eigen::Map<Eigen::VectorXd>(this->joint_state.position.data(),DOF) = this->joint_position;
         Eigen::Map<Eigen::VectorXd>(this->joint_state.velocity.data(),DOF) = this->joint_velocity;
         Eigen::Map<Eigen::VectorXd>(this->joint_state.effort.data(),DOF) = this->joint_effort;
-          
+
         // Publish
         this->joint_state_out.write(this->joint_state);
 
@@ -154,7 +153,7 @@ namespace oro_barrett_sim {
     {
       // Check if the effort command port is connected
       if(this->joint_effort_in.connected()) {
-        // Read newest command from data ports 
+        // Read newest command from data ports
         Eigen::VectorXd joint_effort_tmp(DOF);
         bool new_effort_cmd = this->joint_effort_in.readNewest(joint_effort_tmp) == RTT::NewData;
 
@@ -163,7 +162,7 @@ namespace oro_barrett_sim {
           this->joint_effort.setZero();
           return;
         }
-      
+
         // Make sure the effort command is the right size
         if(joint_effort_tmp.size() == (unsigned)DOF) {
           this->joint_effort_raw = joint_effort_tmp;
@@ -228,7 +227,7 @@ namespace oro_barrett_sim {
     std::vector<gazebo::physics::JointPtr> gazebo_joints_;
 
     // Simulation data buffers
-    Eigen::Matrix<double,DOF,1> 
+    Eigen::Matrix<double,DOF,1>
       raw_joint_position,
       raw_joint_velocity;
 

@@ -223,11 +223,19 @@ namespace oro_barrett_sim {
       unsigned inner, outer;
       fingerToJointIDs(i, inner, outer);
 
-      joint_position[inner] = (1.0-t)*joint_position[inner] + t*gazebo_joints[inner]->GetAngle(0).Radian();
-      joint_position[outer] = (1.0-t)*joint_position[outer] + t*gazebo_joints[outer]->GetAngle(0).Radian();
+      double inner_pos = (1.0-t)*joint_position[inner] + t*gazebo_joints[inner]->GetAngle(0).Radian();
+      double outer_pos = (1.0-t)*joint_position[outer] + t*gazebo_joints[outer]->GetAngle(0).Radian();
 
-      joint_velocity[inner] = (1.0-t)*joint_velocity[inner] + t*gazebo_joints[inner]->GetVelocity(0);
-      joint_velocity[outer] = (1.0-t)*joint_velocity[outer] + t*gazebo_joints[outer]->GetVelocity(0);
+      double inner_vel = (inner_pos - joint_position[inner])/period;
+      double outer_vel = (outer_pos - joint_position[outer])/period;
+      if(std::abs(inner_vel) > 10 || period < 1E-6) { inner_vel = 0; }
+      if(std::abs(outer_vel) > 10 || period < 1E-6) { outer_vel = 0; }
+
+      joint_position[inner] = inner_pos;
+      joint_position[outer] = outer_pos;
+
+      joint_velocity[inner] = inner_vel;
+      joint_velocity[outer] = outer_vel;
 
       if(i == SPREAD_ID) {
         joint_torque[inner] = gazebo_joints[inner]->GetForce(0u);
