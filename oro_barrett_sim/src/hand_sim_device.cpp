@@ -79,7 +79,8 @@ namespace oro_barrett_sim {
     spread_p_gain(10.0),
     spread_d_gain(0.01),
     inner_breakaway_gain(10),
-    outer_recouple_velocity(1.0)
+    outer_recouple_velocity(1.0),
+    cutoff_frequency(50.0)
   {
     // Initialize velocity profiles
     for(unsigned i=0; i<N_PUCKS; i++) {
@@ -111,6 +112,8 @@ namespace oro_barrett_sim {
     hand_service->addProperty("i_gain",i_gain);
     hand_service->addProperty("i_clamp",i_clamp);
     hand_service->addProperty("d_gain",d_gain);
+
+    hand_service->addProperty("cutoff_frequency",cutoff_frequency);
 
     hand_service->addProperty("spread_d_gain",spread_d_gain);
     hand_service->addProperty("spread_p_gain",spread_p_gain);
@@ -214,8 +217,12 @@ namespace oro_barrett_sim {
 
   void HandSimDevice::readSim(ros::Time time, RTT::Seconds period)
   {
+    if(period < 1.0E-5) {
+        return;
+    }
+
     // torque filter constant
-    const double t = exp(-2.0 * M_PI * period / 0.02);
+    const double t = exp(-2.0 * M_PI * period * cutoff_frequency);
 
     // Get state from ALL gazebo joints
     for(unsigned i=0; i < N_PUCKS; i++) {

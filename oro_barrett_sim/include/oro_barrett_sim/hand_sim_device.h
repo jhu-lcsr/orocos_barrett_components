@@ -111,7 +111,8 @@ namespace oro_barrett_sim {
       inner_breakaway_gain,
       outer_recouple_velocity,
       outer_coupling_p_gain,
-      outer_coupling_d_gain;
+      outer_coupling_d_gain,
+      cutoff_frequency;
   };
 }
 

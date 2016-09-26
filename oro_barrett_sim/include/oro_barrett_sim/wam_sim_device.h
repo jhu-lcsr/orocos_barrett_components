@@ -84,8 +84,12 @@ namespace oro_barrett_sim {
 
     void readSim(ros::Time time, RTT::Seconds period)
     {
+      if(period < 1.0E-5) {
+          return;
+      }
       // Get state from gazebo joints
-      const double a = exp(-2.0 * M_PI * period * this->velocity_cutoff_frequency);
+      const double rc = 1.0/(2.0*M_PI*this->velocity_cutoff_frequency);
+      const double a = period / (rc + period);
 
       for(unsigned j=0; j < DOF; j++) {
         double pos = (1.0-a)*raw_joint_position[j] + (a)*gazebo_joints_[j]->GetAngle(0).Radian();

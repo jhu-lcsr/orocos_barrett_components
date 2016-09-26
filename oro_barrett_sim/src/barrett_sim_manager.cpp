@@ -55,6 +55,10 @@ void BarrettSimManager::gazeboUpdateHook(gazebo::physics::ModelPtr model)
 {
   ros::Time gz_time = rtt_rosclock::rtt_now();
   RTT::Seconds gz_period = (gz_time - last_gz_update_time_).toSec();
+  if(gz_period < 1.0E-5) {
+      RTT::log(RTT::Debug) << "BarrettSimManager::gazeboUpdateHook period:" <<gz_period << RTT::endlog();
+      return;
+  }
   gz_period_ = gz_period;
 
   if(!model) {
@@ -66,15 +70,15 @@ void BarrettSimManager::gazeboUpdateHook(gazebo::physics::ModelPtr model)
 
   ros::Time wall_time = rtt_rosclock::host_wall_now();
   if(wam_device_) {
-    wam_device_->readSim(gz_time, gz_period);
-    wam_device_->writeSim(gz_time, gz_period);
+    wam_device_->readSim(gz_time, gz_period_);
+    wam_device_->writeSim(gz_time, gz_period_);
   }
   gz_wam_duration_ = (rtt_rosclock::host_wall_now() - wall_time).toSec();
 
   wall_time = rtt_rosclock::host_wall_now();
   if(hand_device_) {
-    hand_device_->readSim(gz_time, gz_period);
-    hand_device_->writeSim(gz_time, gz_period);
+    hand_device_->readSim(gz_time, gz_period_);
+    hand_device_->writeSim(gz_time, gz_period_);
   }
   gz_hand_duration_ = (rtt_rosclock::host_wall_now() - wall_time).toSec();
 
